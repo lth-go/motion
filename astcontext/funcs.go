@@ -27,6 +27,8 @@ type FuncSignature struct {
 
 	// Output argument of the function, if present
 	Out string `json:"out" vim:"out"`
+
+	NamePos *Position `json:"name_pos" vim:"name_pos"`
 }
 
 func (s *FuncSignature) String() string { return s.Full }
@@ -202,6 +204,7 @@ func (p *Parser) Funcs() Funcs {
 			}
 
 			fn.Signature = NewFuncSignature(x)
+			fn.Signature.NamePos = ToPosition(p.fset.Position(x.Name.NamePos))
 			funcs = append(funcs, fn)
 		case *ast.FuncLit:
 			fn := &Func{
