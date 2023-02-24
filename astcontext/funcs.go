@@ -345,6 +345,12 @@ func (f Funcs) prevFuncShift(offset, shift int) (*Func, error) {
 		return f[i].FuncPos.Offset < offset
 	})
 
+	fn := f[prevIndex]
+
+	if fn.Signature != nil && fn.Signature.NamePos != nil && fn.Signature.NamePos.Offset >= offset {
+		shift++
+	}
+
 	if prevIndex+shift >= len(f) {
 		return nil, errors.New("no functions found")
 	}
