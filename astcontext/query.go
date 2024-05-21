@@ -3,16 +3,20 @@ package astcontext
 import (
 	"errors"
 	"fmt"
+	"sort"
 )
 
 // Decl specifies the result of the "decls" mode
 type Decl struct {
-	Keyword  string `json:"keyword" vim:"keyword"`
-	Ident    string `json:"ident" vim:"ident"`
-	Full     string `json:"full" vim:"full"`
-	Filename string `json:"filename" vim:"filename"`
-	Line     int    `json:"line" vim:"line"`
-	Col      int    `json:"col" vim:"col"`
+	Keyword  string    `json:"keyword" vim:"keyword"`
+	Ident    string    `json:"ident" vim:"ident"`
+	Full     string    `json:"full" vim:"full"`
+	Filename string    `json:"filename" vim:"filename"`
+	Line     int       `json:"line" vim:"line"`
+	Col      int       `json:"col" vim:"col"`
+	DeclPos  *Position `json:"decl_pos" vim:"decl_pos"`
+	Doc      *Position `json:"doc,omitempty" vim:"doc,omitempty"`
+	NamePos  *Position `json:"name_pos" vim:"name_pos"`
 }
 
 // Comment specified the result of the "comment" mode.
@@ -31,6 +35,7 @@ type Result struct {
 	Comment Comment `json:"comment,omitempty" vim:"comment,omitempty"`
 	Decls   []Decl  `json:"decls,omitempty" vim:"decls,omitempty"`
 	Func    *Func   `json:"func,omitempty" vim:"fn,omitempty"`
+	Decl    *Decl   `json:"decl,omitempty" vim:"decl,omitempty"`
 }
 
 // Query specifies a single query to the parser
@@ -70,6 +75,61 @@ func (p *Parser) Run(query *Query) (*Result, error) {
 		return &Result{
 			Mode: query.Mode,
 			Func: fn,
+		}, nil
+	case "decl_next", "decl_prev":
+		funcs := p.Funcs().Declarations()
+		types := p.Types().TopLevel()
+
+		var decls Decls
+
+		for _, t := range types {
+			decls = append(decls, &Decl{
+				Keyword:  "type",
+				Ident:    t.Signature.Name,
+				Full:     t.Signature.Full,
+				Filename: t.TypePos.Filename,
+				Line:     t.TypePos.Line,
+				Col:      t.TypePos.Column,
+				DeclPos:  t.TypePos,
+				Doc:      t.Doc,
+				NamePos:  t.NamePos,
+			})
+		}
+
+		for _, f := range funcs {
+			decls = append(decls, &Decl{
+				Keyword:  "func",
+				Ident:    f.Signature.Name,
+				Full:     f.Signature.Full,
+				Filename: f.FuncPos.Filename,
+				Line:     f.FuncPos.Line,
+				Col:      f.FuncPos.Column,
+				DeclPos:  f.FuncPos,
+				Doc:      f.Doc,
+				NamePos:  f.NamePos,
+			})
+		}
+
+		sort.Sort(decls)
+
+		var decl *Decl
+		var err error
+
+		switch query.Mode {
+		case "decl_next":
+			decl, err = decls.NextFuncShift(query.Offset, query.Shift)
+		case "decl_prev":
+			decl, err = decls.PrevFuncShift(query.Offset, query.Shift)
+		}
+
+		// do no return, instead pass it to the editor so it can parse it
+		if err != nil {
+			return nil, err
+		}
+
+		return &Result{
+			Mode: query.Mode,
+			Decl: decl,
 		}, nil
 	case "decls":
 		funcs := p.Funcs().Declarations()

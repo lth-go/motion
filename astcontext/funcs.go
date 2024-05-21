@@ -27,8 +27,6 @@ type FuncSignature struct {
 
 	// Output argument of the function, if present
 	Out string `json:"out" vim:"out"`
-
-	NamePos *Position `json:"name_pos" vim:"name_pos"`
 }
 
 func (s *FuncSignature) String() string { return s.Full }
@@ -46,6 +44,8 @@ type Func struct {
 
 	// position of the doc comment, only for *ast.FuncDecl
 	Doc *Position `json:"doc,omitempty" vim:"doc,omitempty"`
+
+	NamePos *Position `json:"name_pos" vim:"name_pos"`
 
 	node ast.Node // either *ast.FuncDecl or *ast.FuncLit
 }
@@ -204,7 +204,7 @@ func (p *Parser) Funcs() Funcs {
 			}
 
 			fn.Signature = NewFuncSignature(x)
-			fn.Signature.NamePos = ToPosition(p.fset.Position(x.Name.NamePos))
+			fn.NamePos = ToPosition(p.fset.Position(x.Name.NamePos))
 			funcs = append(funcs, fn)
 		case *ast.FuncLit:
 			fn := &Func{
@@ -347,7 +347,7 @@ func (f Funcs) prevFuncShift(offset, shift int) (*Func, error) {
 
 	fn := f[prevIndex]
 
-	if fn.Signature != nil && fn.Signature.NamePos != nil && fn.Signature.NamePos.Offset >= offset {
+	if fn.NamePos != nil && fn.NamePos.Offset >= offset {
 		shift++
 	}
 

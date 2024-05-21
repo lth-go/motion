@@ -31,6 +31,8 @@ type Type struct {
 	// position of the doc comment
 	Doc *Position `json:"doc,omitempty" vim:"doc,omitempty"`
 
+	NamePos *Position `json:"name_pos" vim:"name_pos"`
+
 	node *ast.TypeSpec
 }
 
@@ -81,6 +83,7 @@ func (p *Parser) Types() Types {
 			}
 
 			tp.Signature = NewTypeSignature(x)
+			tp.NamePos = ToPosition(p.fset.Position(x.Name.Pos()))
 
 			typs = append(typs, tp)
 		}
